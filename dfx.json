@@ -1,0 +1,29 @@
+{
+  "canisters": {
+    "access_control_backend": {
+      "candid": "src/access_control_backend/access_control_backend.did",
+      "package": "access_control_backend",
+      "type": "rust"
+    },
+    "access_control_frontend": {
+      "dependencies": [
+        "access_control_backend"
+      ],
+      "frontend": {
+        "entrypoint": "src/access_control_frontend/src/index.html"
+      },
+      "source": [
+        "src/access_control_frontend/assets",
+        "dist/access_control_frontend/"
+      ],
+      "type": "assets"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "version": 1
+}
