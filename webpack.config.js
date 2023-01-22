@@ -38,7 +38,7 @@ const canisterEnvVariables = initCanisterEnv();
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 
-const frontendDirectory = "access_control_frontend";
+const frontendDirectory = "dapp_frontend";
 
 const frontend_entry = path.join("src", frontendDirectory, "src", "index.html");
 

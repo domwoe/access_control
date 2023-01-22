@@ -1,5 +1,5 @@
 [package]
-name = "access_control_backend"
+name = "authz_canister"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,5 +10,9 @@ crate-type = ["cdylib"]
 
 [dependencies]
 candid = "0.8.2"
-ic-cdk = "0.6.0"
-ic-cdk-macros = "0.6.0"
+ic-cdk = "0.6.8"
+ic-cdk-macros = "0.6.8"
+ic-certified-map = "0.3.2"
+serde = { version = "1", features = ["rc"] }
+serde_bytes = "0.11"
+serde_cbor = "0.11"

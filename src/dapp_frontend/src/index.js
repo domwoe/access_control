@@ -1,4 +1,6 @@
-import { access_control_backend } from "../../declarations/access_control_backend";
+import { authz } from "../../declarations/authz_canister";
+import { Cbor, Certificate } from "@dfinity/agent";
+
 
 document.querySelector("form").addEventListener("submit", async (e) => {
   e.preventDefault();

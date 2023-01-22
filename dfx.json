@@ -1,20 +1,26 @@
 {
   "canisters": {
-    "access_control_backend": {
-      "candid": "src/access_control_backend/access_control_backend.did",
-      "package": "access_control_backend",
+    "authz_canister": {
+      "candid": "src/authz_canister/authz_canister.did",
+      "package": "authz_canister",
       "type": "rust"
     },
-    "access_control_frontend": {
+    "resource_canister": {
+      "candid": "src/resource_canister/resource_canister.did",
+      "package": "resource_canister",
+      "type": "rust"
+    },
+    "dapp_frontend": {
       "dependencies": [
-        "access_control_backend"
+        "authz_canister",
+        "resource_canister"
       ],
       "frontend": {
-        "entrypoint": "src/access_control_frontend/src/index.html"
+        "entrypoint": "src/dapp_frontend/src/index.html"
       },
       "source": [
-        "src/access_control_frontend/assets",
-        "dist/access_control_frontend/"
+        "src/dapp_frontend/assets",
+        "dist/dapp_frontend/"
       ],
       "type": "assets"
     }

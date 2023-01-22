@@ -1,5 +1,5 @@
 {
-  "name": "access_control_frontend",
+  "name": "access_control",
   "version": "0.1.0",
   "description": "Internet Computer starter application",
   "keywords": ["Internet Computer", "Motoko", "JavaScript", "Canister"],
@@ -8,7 +8,7 @@
     "prebuild": "npm run generate",
     "start": "webpack serve --mode development --env development",
     "prestart": "npm run generate",
-    "generate": "dfx generate access_control_backend"
+    "generate": "dfx generate"
   },
   "devDependencies": {
     "@dfinity/agent": "0.15.1",

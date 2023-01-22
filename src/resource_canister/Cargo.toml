@@ -1,0 +1,21 @@
+[package]
+name = "resource_canister"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+candid = "0.8.4"
+ic-cdk = "0.6.8"
+ic-cdk-macros = "0.6.8"
+ic-certified-map = "0.3.2"
+ic-certification = "0.22.0"
+ic-verify-bls-signature = "0.1"
+serde = { version = "1", features = ["rc"] }
+serde_bytes = "0.11"
+serde_derive = "1.0.125"
+serde_cbor = "0.11"

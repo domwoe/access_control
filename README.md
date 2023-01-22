@@ -1,37 +1,59 @@
-# access_control
+# Access Control on the Internet Computer
 
-Welcome to your new access_control project and to the internet computer development community. By default, creating a new project adds this README and some template files to your project directory. You can edit these template files to customize your project and to include your own code to speed up the development cycle.
+## Motivation
 
-To get started, you might want to explore the project directory structure and the default configuration file. Working with this project in your development environment will not affect any production deployment or identity tokens.
+In microservice architectures, it's common to centralize access control by having a single authorization service that manages all permissions. This simplifies permission management but raises the question of how resource services learn about the permissions. There are two main patterns:
 
-To learn more before you start working with access_control, see the following documentation available online:
+1) Tokens: A client requests an authorization token from the authorization service and invokes it at the resource service. Here, the resource service does not need to directly communicate with the authorization service.
+2) Validation endpoint: The authorization server exposes a validation endpoint that the resource service can use to validate permissions.
 
-- [Quick Start](https://smartcontracts.org/docs/quickstart/quickstart-intro.html)
-- [SDK Developer Tools](https://smartcontracts.org/docs/developers-guide/sdk-guide.html)
-- [Rust Canister Devlopment Guide](https://smartcontracts.org/docs/rust-guide/rust-intro.html)
-- [ic-cdk](https://docs.rs/ic-cdk)
-- [ic-cdk-macros](https://docs.rs/ic-cdk-macros)
-- [Candid Introduction](https://smartcontracts.org/docs/candid-guide/candid-intro.html)
-- [JavaScript API Reference](https://erxue-5aaaa-aaaab-qaagq-cai.raw.ic0.app)
 
-If you want to start working on your project right away, you might want to try the following commands:
+On the Internet Computer, we can use the same patterns and this example application demonstrates these patterns.
 
-```bash
-cd access_control/
-dfx help
-dfx canister --help
+## Architecture
+
+We have the following two canisters:
+
+1) Authorization Canister
+
+The authorization canister has the following interface:
+
+```
+type token = blob;
+type target = text;
+service : {
+    "update_permissions": (principal, target, bool) -> (text); // update permissions of a specific user and target (by its function name)
+    "read_permissions_certified": ()              -> (opt token) query; // fetch permissions as token
+    "verify_permissions": (principal, target)       -> (bool) query; // verify permissions
+}
 ```
 
-## Running the project locally
+The permissions are maintained in a certified data structure using the `ic-certified-map` crate and the certified data functionality of the Internet Computer. When a client fetches the token with the `read_permissions_certified` function, then this token includes a path to the state root hash of the Internet Computer and a signature. Thereby, the resource canister can verify the authenticity of the token and the client can't tamper with the token.
+ 
 
-If you want to test your project locally, you can use the following commands:
+2) Resource canister
 
-```bash
-# Starts the replica, running in the background
-dfx start --background
+The resource canister is the [counter example canister](https://github.com/dfinity/examples/tree/master/rust/counter) with added permissions.
 
-# Deploys your canisters to the replica and generates your candid interface
-dfx deploy
+```
+type token = blob;
+service : (principal) -> {
+    "get": (opt token)      -> (nat) query;
+    "get_composite": (opt blob) -> (nat) query;
+    "set": (nat, opt token) -> ();
+    "inc": (opt token)      -> ();
+```
+Note that we have to provide a principal as an init argument. This allows to register the authorization canister. We need the principal of the authorization canister to verify that the tokens have been "signed" by the authorization canister, or to know how to call the `verify_permissions` endpoints.
+
+Furthermore, we note that each endpoint has an optional argument to provide the authorization token, and that there's an additional endpoint called `get_composite`. This is a composite query that allows to do an inter-canister query call to the `verify_permissions` endpoint.
+
+
+### Demo Flow
+
+You can run a demo flow 
+
+```
+./demo.sh
 ```
 
-Once the job completes, your application will be available at `http://localhost:4943?canisterId={asset_canister_id}`.
+It will also show the runtime of the commands.

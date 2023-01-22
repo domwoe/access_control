@@ -1,4 +1,5 @@
 [workspace]
 members = [
-    "src/access_control_backend",
+    "src/authz_canister",
+    "src/resource_canister",
 ]
