@@ -1,5 +1,7 @@
 # Access Control on the Internet Computer
 
+**Note:** This demonstration project is still work in progress. Currently, the IC certificate inside the token is not cryptographically verified.
+
 ## Motivation
 
 In microservice architectures, it's common to centralize access control by having a single authorization service that manages all permissions. This simplifies permission management but raises the question of how resource services learn about the permissions. There are two main patterns:
@@ -14,7 +16,7 @@ On the Internet Computer, we can use the same patterns and this example applicat
 
 We have the following two canisters:
 
-1) Authorization Canister
+### Authorization Canister
 
 The authorization canister has the following interface:
 
@@ -28,10 +30,11 @@ service : {
 }
 ```
 
-The permissions are maintained in a certified data structure using the `ic-certified-map` crate and the certified data functionality of the Internet Computer. When a client fetches the token with the `read_permissions_certified` function, then this token includes a path to the state root hash of the Internet Computer and a signature. Thereby, the resource canister can verify the authenticity of the token and the client can't tamper with the token.
+The permissions are maintained in a certified data structure using the `ic-certified-map` crate and the [certified data](https://internetcomputer.org/how-it-works/response-certification/) functionality of the Internet Computer. When a client fetches the token with the `read_permissions_certified` function, then this token includes a path to the state root hash of the Internet Computer signed by the subnet together with a delegation from the NNS subnet. Thereby, the resource canister can verify the authenticity of the token given the IC's public key and the client can't tamper with the token.
+The token also includes a timestamp to validate freshness. 
  
 
-2) Resource canister
+### Resource canister
 
 The resource canister is the [counter example canister](https://github.com/dfinity/examples/tree/master/rust/counter) with added permissions.
 
@@ -45,15 +48,16 @@ service : (principal) -> {
 ```
 Note that we have to provide a principal as an init argument. This allows to register the authorization canister. We need the principal of the authorization canister to verify that the tokens have been "signed" by the authorization canister, or to know how to call the `verify_permissions` endpoints.
 
-Furthermore, we note that each endpoint has an optional argument to provide the authorization token, and that there's an additional endpoint called `get_composite`. This is a composite query that allows to do an inter-canister query call to the `verify_permissions` endpoint.
+Furthermore, we note that each endpoint has an optional argument to provide the authorization token, and that there's an additional endpoint called `get_composite`. This is a composite query that allows performing an inter-canister query call to the `verify_permissions` endpoint.
 
 
-### Demo Flow
+## Demo Flow
 
-You can run a demo flow 
+You can run a demo flow which will deploy the canisters, set some permissions, fetch a token and perform some operations on the resource canister with and without the authorization token. Furthermore, the runtime of the operations will be written to the terminal.
+
+You can run the demo flow with the following command:
 
 ```
 ./demo.sh
 ```
 
-It will also show the runtime of the commands.
