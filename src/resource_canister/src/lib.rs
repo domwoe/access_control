@@ -1,5 +1,5 @@
 use candid::{types::number::Nat, Principal};
-use ic_cdk::api::{caller, trap};
+use ic_cdk::api::{caller, time, trap};
 use ic_cdk_macros::{init, query, update};
 use ic_certification::{Certificate, HashTree, LookupResult};
 // use ic_verify_bls_signature::verify_bls_signature;
@@ -16,6 +16,7 @@ struct Sig<'a> {
 }
 
 // const IC_ROOT_KEY: &[u8; 133] = b"\x30\x81\x82\x30\x1d\x06\x0d\x2b\x06\x01\x04\x01\x82\xdc\x7c\x05\x03\x01\x02\x01\x06\x0c\x2b\x06\x01\x04\x01\x82\xdc\x7c\x05\x03\x02\x01\x03\x61\x00\x81\x4c\x0e\x6e\xc7\x1f\xab\x58\x3b\x08\xbd\x81\x37\x3c\x25\x5c\x3c\x37\x1b\x2e\x84\x86\x3c\x98\xa4\xf1\xe0\x8b\x74\x23\x5d\x14\xfb\x5d\x9c\x0c\xd5\x46\xd9\x68\x5f\x91\x3a\x0c\x0b\x2c\xc5\x34\x15\x83\xbf\x4b\x43\x92\xe4\x67\xdb\x96\xd6\x5b\x9b\xb4\xcb\x71\x71\x12\xf8\x47\x2e\x0d\x5a\x4d\x14\x50\x5f\xfd\x74\x84\xb0\x12\x91\x09\x1c\x5f\x87\xb9\x88\x83\x46\x3f\x98\x09\x1a\x0b\xaa\xae";
+const TOKEN_EXPIRATION: u128 = 15 * 60 * 1000; // 15 minutes
 
 #[init]
 fn init(authz_canister_id: Principal) {
@@ -33,7 +34,7 @@ thread_local! {
 fn get(token: Option<Vec<u8>>) -> Nat {
     let is_allowed = match token {
         Some(token) => verify_token("get", token),
-        None => false
+        None => false,
     };
     if !is_allowed {
         trap(&format!("Caller {} is not allowed to call get", caller()));
@@ -47,7 +48,7 @@ fn get(token: Option<Vec<u8>>) -> Nat {
 async fn get_composite(token: Option<Vec<u8>>) -> Nat {
     let is_allowed = match token {
         Some(token) => verify_token("get", token),
-        None => verify_remote_permissions("get").await
+        None => verify_remote_permissions("get").await,
     };
     if !is_allowed {
         trap(&format!("Caller {} is not allowed to call get", caller()));
@@ -60,7 +61,7 @@ async fn get_composite(token: Option<Vec<u8>>) -> Nat {
 async fn set(n: Nat, token: Option<Vec<u8>>) {
     let is_allowed = match token {
         Some(token) => verify_token("set", token),
-        None => verify_remote_permissions("set").await
+        None => verify_remote_permissions("set").await,
     };
     if !is_allowed {
         trap(&format!("Caller {} is not allowed to call set", caller()));
@@ -73,7 +74,7 @@ async fn set(n: Nat, token: Option<Vec<u8>>) {
 async fn inc(token: Option<Vec<u8>>) {
     let is_allowed = match token {
         Some(token) => verify_token("inc", token),
-        None => verify_remote_permissions("inc").await
+        None => verify_remote_permissions("inc").await,
     };
     if !is_allowed {
         trap(&format!("Caller {} is not allowed to call inc", caller()));
@@ -83,10 +84,16 @@ async fn inc(token: Option<Vec<u8>>) {
 
 /// Verify by permissions by calling the authz canister
 async fn verify_remote_permissions(action: &str) -> bool {
+    let authz_canister_id =
+        AUTHZ_CANISTER_ID.with(|authz_canister_id| (*authz_canister_id.borrow()));
 
-    let authz_canister_id = AUTHZ_CANISTER_ID.with(|authz_canister_id| (*authz_canister_id.borrow()));
-
-    match ic_cdk::call(authz_canister_id, "verify_permissions", (caller(), action.to_string())).await {
+    match ic_cdk::call(
+        authz_canister_id,
+        "verify_permissions",
+        (caller(), action.to_string()),
+    )
+    .await
+    {
         Ok((is_allowed,)) => is_allowed,
         Err(_) => false,
     }
@@ -100,6 +107,11 @@ fn verify_token(action: &str, mut token: Vec<u8>) -> bool {
 
     let authz_canister_id =
         AUTHZ_CANISTER_ID.with(|authz_canister_id| (*authz_canister_id.borrow()));
+
+    // Validate timestamp
+    let current_time_ns = ic_cdk::api::time() as u128;
+
+    let is_valid = validate_certificate_time(&certificate, &current_time_ns, &TOKEN_EXPIRATION);
 
     // Check if root hash of the permissions hash tree matches the certified data in the certificate
 
@@ -126,7 +138,30 @@ fn verify_token(action: &str, mut token: Vec<u8>) -> bool {
     let path = [caller().into(), action.into()];
 
     matches!(sig.tree.lookup_path(&path), LookupResult::Found(_))
+}
 
+// based on https://github.com/dfinity/response-verification/blob/50a32f26fe899a212cec35572e7097bff58b741c/packages/ic-response-verification/src/validation.rs#L6
+fn validate_certificate_time(
+    certificate: &Certificate,
+    current_time_ns: &u128,
+    allowed_certificate_time_offset: &u128,
+) -> bool {
+    let time_path = ["time".into()];
+
+    let LookupResult::Found(encoded_certificate_time) = certificate.tree.lookup_path(&time_path) else {
+        return false;
+    };
+
+    let certificate_time =
+        leb128::read::unsigned(&mut encoded_certificate_time.as_ref()).unwrap() as u128;
+    let max_certificate_time = current_time_ns + allowed_certificate_time_offset;
+    let min_certificate_time = current_time_ns - allowed_certificate_time_offset;
+
+    if certificate_time > max_certificate_time || certificate_time < min_certificate_time {
+        return false;
+    } else {
+        return true;
+    }
 }
 
 // fn verify(

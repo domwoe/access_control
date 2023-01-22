@@ -15,6 +15,7 @@ ic-cdk-macros = "0.6.8"
 ic-certified-map = "0.3.2"
 ic-certification = "0.22.0"
 ic-verify-bls-signature = "0.1"
+leb128 = "0.2.5"
 serde = { version = "1", features = ["rc"] }
 serde_bytes = "0.11"
 serde_derive = "1.0.125"

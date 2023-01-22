@@ -806,6 +806,7 @@ dependencies = [
  "ic-certification",
  "ic-certified-map",
  "ic-verify-bls-signature",
+ "leb128",
  "serde",
  "serde_bytes",
  "serde_cbor",
