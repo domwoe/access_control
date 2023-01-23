@@ -51,7 +51,9 @@ Note that we have to provide a principal as an init argument. This allows to reg
 Furthermore, we note that each endpoint has an optional argument to provide the authorization token, and that there's an additional endpoint called `get_composite`. This is a composite query that allows performing an inter-canister query call to the `verify_permissions` endpoint.
 
 
-## Demo Flow
+## Demo flow
+
+### Local demo
 
 You can run a demo flow that will deploy the canisters, set some permissions, fetch a token and perform some operations on the resource canister with and without the authorization token. Furthermore, the runtime of the operations will be written to the terminal.
 
@@ -60,4 +62,15 @@ You can run the demo flow with the following command:
 ```
 ./demo.sh
 ```
+
+**Note:** The local demo flow will show an error since I haven't yet figured out to properly provide the root key of the local replica to resource canister.
+
+### Live deployment
+
+```
+Resource canister: 62hqk-naaaa-aaaap-qa5oa-cai
+Authorization canister: 65gw6-ayaaa-aaaap-qa5oq-cai
+```
+
+You can have a look into it or run `demo_ic.sh`.
 
