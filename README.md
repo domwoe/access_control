@@ -53,7 +53,7 @@ Furthermore, we note that each endpoint has an optional argument to provide the 
 
 ## Demo Flow
 
-You can run a demo flow which will deploy the canisters, set some permissions, fetch a token and perform some operations on the resource canister with and without the authorization token. Furthermore, the runtime of the operations will be written to the terminal.
+You can run a demo flow that will deploy the canisters, set some permissions, fetch a token and perform some operations on the resource canister with and without the authorization token. Furthermore, the runtime of the operations will be written to the terminal.
 
 You can run the demo flow with the following command:
 

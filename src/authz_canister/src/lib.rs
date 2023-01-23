@@ -7,6 +7,12 @@ use serde::Serialize;
 use serde_bytes::ByteBuf;
 use std::cell::RefCell;
 
+#[derive(Serialize)]
+struct Token<'a> {
+    certificate: ByteBuf,
+    tree: HashTree<'a>,
+}
+
 
 thread_local! {
     static PERMISSIONS: RefCell<RbTree<Principal, RbTree<String, Vec<u8>>>> = RefCell::new(RbTree::new());
@@ -41,20 +47,14 @@ fn read_permissions_certified() -> Option<Vec<u8>> {
         let permissions = permissions.borrow();
         let tree = permissions.witness(user.as_ref());
 
-        #[derive(Serialize)]
-        struct Sig<'a> {
-            certificate: ByteBuf,
-            tree: HashTree<'a>,
-        }
-    
-        let sig = Sig {
+        let token = Token {
             certificate: ByteBuf::from(certificate),
             tree,
         };
     
         let mut cbor = serde_cbor::ser::Serializer::new(Vec::new());
         cbor.self_describe().unwrap();
-        sig.serialize(&mut cbor).unwrap();
+        token.serialize(&mut cbor).unwrap();
         Some(cbor.into_inner())
     })
 
