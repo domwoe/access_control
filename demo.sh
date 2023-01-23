@@ -8,7 +8,7 @@ AUTHZ_CAN_ID=$(dfx canister id authz_canister)
 
 # Need to set root key of local replica as second argument if used locally
 ROOT_KEY=$(dfx ping | sed -n 's/.*"root_key": \(.*\)/\1/p')
-dfx deploy resource_canister --argument "(principal \"$AUTHZ_CAN_ID\", opt blob \"$ROOT_KEY\"T)"
+dfx deploy resource_canister --argument "(principal \"$AUTHZ_CAN_ID\", opt blob \"$ROOT_KEY\")"
 
 MY_ID=$(dfx identity get-principal)
 echo 'Setting permissions for '$MY_ID 'to use GET and INC but not SET...'
