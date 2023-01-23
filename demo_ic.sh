@@ -9,7 +9,7 @@ dfx canister call $AUTHZ_CAN_ID update_permissions "(principal \"$MY_ID\", \"get
 dfx canister call $AUTHZ_CAN_ID update_permissions "(principal \"$MY_ID\", \"inc\", true)" --network=ic
 
 echo 'Requesting token..'
-TOKEN=$(dfx canister call $AUTH_CAN_ID read_permissions_certified --network=ic | grep -o '".*"')
+TOKEN=$(dfx canister call $AUTHZ_CAN_ID read_permissions_certified --network=ic | grep -o '".*"')
 
 echo 'Get counter value with token...'
 time dfx canister call $RESOURCE_CAN_ID get "(opt blob $TOKEN,)" --network=ic
