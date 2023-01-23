@@ -5,7 +5,9 @@ dfx stop
 dfx start --background --clean
 dfx deploy authz_canister
 AUTHZ_CAN_ID=$(dfx canister id authz_canister)
-dfx deploy resource_canister --argument "(principal \"$AUTHZ_CAN_ID\",)"
+
+# Need to set root key of local replica as second argument if used locally
+dfx deploy resource_canister --argument "(principal \"$AUTHZ_CAN_ID\", null)"
 
 MY_ID=$(dfx identity get-principal)
 echo 'Setting permissions for '$MY_ID 'to use GET and INC but not SET...'

@@ -1,6 +1,6 @@
 # Access Control on the Internet Computer
 
-**Note:** This demonstration project is still work in progress. Currently, the IC certificate inside the token is not cryptographically verified.
+**Note:** This is a demonstration project and hasn't been audited. Please use it for inspiration only.
 
 ## Motivation
 

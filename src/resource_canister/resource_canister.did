@@ -1,4 +1,4 @@
-service : (principal) -> {
+service : (principal, opt blob) -> {
     "get": (opt blob)      -> (nat) query;
     "get_composite": (opt blob) -> (nat) query;
     "set": (nat, opt blob) -> ();

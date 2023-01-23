@@ -121,7 +121,9 @@ fn verify_token(action: &str, mut token: Vec<u8>) -> bool {
     // Validate timestamp
     let current_time_ns = ic_cdk::api::time() as u128;
 
-    let is_valid = validate_certificate_time(&certificate, &current_time_ns, &TOKEN_EXPIRATION);
+    if !validate_certificate_time(&certificate, &current_time_ns, &TOKEN_EXPIRATION) {
+        return false;
+    }
 
     // Check if root hash of the permissions hash tree matches the certified data in the certificate
 
@@ -195,7 +197,9 @@ fn verify_certificate(
     let der_key = validate_delegation(&cert.delegation, effective_canister_id);
     let key = extract_der(der_key);
 
-    verify_bls_signature(sig, &msg, &key).unwrap();
+    if verify_bls_signature(sig, &msg, &key).is_err() {
+        trap("Certificate verification failed")
+    }
     true
 }
 
