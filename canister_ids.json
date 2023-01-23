@@ -1,0 +1,8 @@
+{
+  "authz_canister": {
+    "ic": "62hqk-naaaa-aaaap-qa5oa-cai"
+  },
+  "resource_canister": {
+    "ic": "65gw6-ayaaa-aaaap-qa5oq-cai"
+  }
+}

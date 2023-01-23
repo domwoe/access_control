@@ -19,7 +19,7 @@ const DER_PREFIX: &[u8; 37] = b"\x30\x81\x82\x30\x1d\x06\x0d\x2b\x06\x01\x04\x01
 const KEY_LENGTH: usize = 96;
 
 const IC_ROOT_KEY: &[u8; 133] = b"\x30\x81\x82\x30\x1d\x06\x0d\x2b\x06\x01\x04\x01\x82\xdc\x7c\x05\x03\x01\x02\x01\x06\x0c\x2b\x06\x01\x04\x01\x82\xdc\x7c\x05\x03\x02\x01\x03\x61\x00\x81\x4c\x0e\x6e\xc7\x1f\xab\x58\x3b\x08\xbd\x81\x37\x3c\x25\x5c\x3c\x37\x1b\x2e\x84\x86\x3c\x98\xa4\xf1\xe0\x8b\x74\x23\x5d\x14\xfb\x5d\x9c\x0c\xd5\x46\xd9\x68\x5f\x91\x3a\x0c\x0b\x2c\xc5\x34\x15\x83\xbf\x4b\x43\x92\xe4\x67\xdb\x96\xd6\x5b\x9b\xb4\xcb\x71\x71\x12\xf8\x47\x2e\x0d\x5a\x4d\x14\x50\x5f\xfd\x74\x84\xb0\x12\x91\x09\x1c\x5f\x87\xb9\x88\x83\x46\x3f\x98\x09\x1a\x0b\xaa\xae";
-const TOKEN_EXPIRATION: u128 = 15 * 60 * 1000; // 15 minutes
+const TOKEN_EXPIRATION: u128 = 15 * 60 * 1000 * 1000 * 1000; // 15 minutes in ns
 
 #[init]
 fn init(authz_canister_id: Principal, ic_root_key: Option<Vec<u8>> ) {
@@ -110,7 +110,6 @@ async fn verify_remote_permissions(action: &str) -> bool {
 }
 
 /// Verify the token
-//TODO: Validate time and signature including delegation
 fn verify_token(action: &str, mut token: Vec<u8>) -> bool {
     let token: Token = from_mut_slice(&mut token[..]).unwrap();
     let certificate: Certificate = serde_cbor::from_slice(&token.certificate[..]).unwrap();
@@ -121,9 +120,7 @@ fn verify_token(action: &str, mut token: Vec<u8>) -> bool {
     // Validate timestamp
     let current_time_ns = ic_cdk::api::time() as u128;
 
-    if !validate_certificate_time(&certificate, &current_time_ns, &TOKEN_EXPIRATION) {
-        return false;
-    }
+    validate_certificate_time(&certificate, &current_time_ns, &TOKEN_EXPIRATION);
 
     // Check if root hash of the permissions hash tree matches the certified data in the certificate
 
@@ -136,13 +133,13 @@ fn verify_token(action: &str, mut token: Vec<u8>) -> bool {
     // Get value of the certified data in the certificate
     let witness = match certificate.tree.lookup_path(&certified_data_path) {
         LookupResult::Found(witness) => witness,
-        _ => return false,
+        _ => trap("Certified data not found in certificate")
     };
 
     // Recompute the root hash of the permissions hash tree
     let digest = token.tree.digest();
     if witness != digest {
-        return false;
+        trap("Root hash of the permissions hash tree does not match the certified data in the certificate")
     }
 
     // Check if the caller is authorized to call the action
@@ -150,7 +147,7 @@ fn verify_token(action: &str, mut token: Vec<u8>) -> bool {
     let path = [caller().into(), action.into()];
 
     if !matches!(token.tree.lookup_path(&path), LookupResult::Found(_)) {
-        return false;
+        trap("User does not have permission to call this action")
     }
 
 
@@ -164,11 +161,11 @@ fn validate_certificate_time(
     certificate: &Certificate,
     current_time_ns: &u128,
     allowed_certificate_time_offset: &u128,
-) -> bool {
+) {
     let time_path = ["time".into()];
 
     let LookupResult::Found(encoded_certificate_time) = certificate.tree.lookup_path(&time_path) else {
-        return false;
+        trap("Certificate does not contain a time field")
     };
 
     let certificate_time =
@@ -176,10 +173,10 @@ fn validate_certificate_time(
     let max_certificate_time = current_time_ns + allowed_certificate_time_offset;
     let min_certificate_time = current_time_ns - allowed_certificate_time_offset;
 
-    if certificate_time > max_certificate_time || certificate_time < min_certificate_time {
-        return false;
-    } else {
-        return true;
+    if certificate_time > max_certificate_time {
+        trap(&format!("Certificate time is too far in the future. Certificate time: {}, current time: {}", certificate_time, current_time_ns))
+    } else if certificate_time < min_certificate_time {
+        trap(&format!("Certificate time is too far in the past. Certificate time: {}, current time: {}", certificate_time, current_time_ns))
     }
 }
 
@@ -191,7 +188,6 @@ fn verify_certificate(
 
     let root_hash = cert.tree.digest();
     let mut msg = vec![];
-    // msg.extend_from_slice(IC_STATE_ROOT_DOMAIN_SEPARATOR);
     msg.extend_from_slice(&root_hash);
 
     let der_key = validate_delegation(&cert.delegation, effective_canister_id);
