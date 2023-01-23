@@ -29,7 +29,7 @@ fn init(authz_canister_id: Principal, ic_root_key: Option<Vec<u8>> ) {
     AUTHZ_CANISTER_ID.with(|canister_id| *canister_id.borrow_mut() = authz_canister_id);
 
    if let Some(ic_root_key) = ic_root_key {
-        ROOT_KEY.with(|root_key| *root_key.borrow_mut() = ic_root_key);
+        ROOT_KEY.with(|root_key| *root_key.borrow_mut() = hex::decode(ic_root_key).unwrap());
     } else {
         ROOT_KEY.with(|root_key| *root_key.borrow_mut() = IC_ROOT_KEY.to_vec());
     }

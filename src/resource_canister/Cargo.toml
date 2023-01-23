@@ -10,6 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 candid = "0.8.4"
+hex = "0.4.3"
 ic-cdk = "0.6.8"
 ic-cdk-macros = "0.6.8"
 ic-certified-map = "0.3.2"

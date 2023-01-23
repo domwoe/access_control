@@ -63,8 +63,6 @@ You can run the demo flow with the following command:
 ./demo.sh
 ```
 
-**Note:** The local demo flow will show an error since I haven't yet figured out to properly provide the root key of the local replica to resource canister.
-
 ### Live deployment
 
 ```
