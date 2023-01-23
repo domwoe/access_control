@@ -1,8 +1,8 @@
 use candid::{types::number::Nat, Principal};
-use ic_cdk::api::{caller, time, trap};
+use ic_cdk::api::{caller, trap};
 use ic_cdk_macros::{init, query, update};
-use ic_certification::{Certificate, HashTree, LookupResult};
-// use ic_verify_bls_signature::verify_bls_signature;
+use ic_certification::{Certificate, Delegation, HashTree, LookupResult};
+use ic_verify_bls_signature::{verify_bls_signature};
 use std::cell::RefCell;
 
 use serde_bytes::ByteBuf;
@@ -10,21 +10,31 @@ use serde_cbor::de::from_mut_slice;
 use serde_derive::Deserialize;
 
 #[derive(Debug, Deserialize)]
-struct Sig<'a> {
+struct Token<'a> {
     certificate: ByteBuf,
     tree: HashTree<'a>,
 }
 
-// const IC_ROOT_KEY: &[u8; 133] = b"\x30\x81\x82\x30\x1d\x06\x0d\x2b\x06\x01\x04\x01\x82\xdc\x7c\x05\x03\x01\x02\x01\x06\x0c\x2b\x06\x01\x04\x01\x82\xdc\x7c\x05\x03\x02\x01\x03\x61\x00\x81\x4c\x0e\x6e\xc7\x1f\xab\x58\x3b\x08\xbd\x81\x37\x3c\x25\x5c\x3c\x37\x1b\x2e\x84\x86\x3c\x98\xa4\xf1\xe0\x8b\x74\x23\x5d\x14\xfb\x5d\x9c\x0c\xd5\x46\xd9\x68\x5f\x91\x3a\x0c\x0b\x2c\xc5\x34\x15\x83\xbf\x4b\x43\x92\xe4\x67\xdb\x96\xd6\x5b\x9b\xb4\xcb\x71\x71\x12\xf8\x47\x2e\x0d\x5a\x4d\x14\x50\x5f\xfd\x74\x84\xb0\x12\x91\x09\x1c\x5f\x87\xb9\x88\x83\x46\x3f\x98\x09\x1a\x0b\xaa\xae";
+const DER_PREFIX: &[u8; 37] = b"\x30\x81\x82\x30\x1d\x06\x0d\x2b\x06\x01\x04\x01\x82\xdc\x7c\x05\x03\x01\x02\x01\x06\x0c\x2b\x06\x01\x04\x01\x82\xdc\x7c\x05\x03\x02\x01\x03\x61\x00";
+const KEY_LENGTH: usize = 96;
+
+const IC_ROOT_KEY: &[u8; 133] = b"\x30\x81\x82\x30\x1d\x06\x0d\x2b\x06\x01\x04\x01\x82\xdc\x7c\x05\x03\x01\x02\x01\x06\x0c\x2b\x06\x01\x04\x01\x82\xdc\x7c\x05\x03\x02\x01\x03\x61\x00\x81\x4c\x0e\x6e\xc7\x1f\xab\x58\x3b\x08\xbd\x81\x37\x3c\x25\x5c\x3c\x37\x1b\x2e\x84\x86\x3c\x98\xa4\xf1\xe0\x8b\x74\x23\x5d\x14\xfb\x5d\x9c\x0c\xd5\x46\xd9\x68\x5f\x91\x3a\x0c\x0b\x2c\xc5\x34\x15\x83\xbf\x4b\x43\x92\xe4\x67\xdb\x96\xd6\x5b\x9b\xb4\xcb\x71\x71\x12\xf8\x47\x2e\x0d\x5a\x4d\x14\x50\x5f\xfd\x74\x84\xb0\x12\x91\x09\x1c\x5f\x87\xb9\x88\x83\x46\x3f\x98\x09\x1a\x0b\xaa\xae";
 const TOKEN_EXPIRATION: u128 = 15 * 60 * 1000; // 15 minutes
 
 #[init]
-fn init(authz_canister_id: Principal) {
+fn init(authz_canister_id: Principal, ic_root_key: Option<Vec<u8>> ) {
     // Set the initial value of the counter.
     AUTHZ_CANISTER_ID.with(|canister_id| *canister_id.borrow_mut() = authz_canister_id);
+
+   if let Some(ic_root_key) = ic_root_key {
+        ROOT_KEY.with(|root_key| *root_key.borrow_mut() = ic_root_key);
+    } else {
+        ROOT_KEY.with(|root_key| *root_key.borrow_mut() = IC_ROOT_KEY.to_vec());
+    }
 }
 
 thread_local! {
+    static ROOT_KEY: RefCell<Vec<u8>> = RefCell::new(IC_ROOT_KEY.to_vec());
     static COUNTER: RefCell<Nat> = RefCell::new(Nat::from(0));
     static AUTHZ_CANISTER_ID: RefCell<Principal> = RefCell::new(Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap());
 }
@@ -102,8 +112,8 @@ async fn verify_remote_permissions(action: &str) -> bool {
 /// Verify the token
 //TODO: Validate time and signature including delegation
 fn verify_token(action: &str, mut token: Vec<u8>) -> bool {
-    let sig: Sig = from_mut_slice(&mut token[..]).unwrap();
-    let certificate: Certificate = serde_cbor::from_slice(&sig.certificate[..]).unwrap();
+    let token: Token = from_mut_slice(&mut token[..]).unwrap();
+    let certificate: Certificate = serde_cbor::from_slice(&token.certificate[..]).unwrap();
 
     let authz_canister_id =
         AUTHZ_CANISTER_ID.with(|authz_canister_id| (*authz_canister_id.borrow()));
@@ -128,7 +138,7 @@ fn verify_token(action: &str, mut token: Vec<u8>) -> bool {
     };
 
     // Recompute the root hash of the permissions hash tree
-    let digest = sig.tree.digest();
+    let digest = token.tree.digest();
     if witness != digest {
         return false;
     }
@@ -137,7 +147,14 @@ fn verify_token(action: &str, mut token: Vec<u8>) -> bool {
     // We do this by checking if the following patch exists in the hash tree:
     let path = [caller().into(), action.into()];
 
-    matches!(sig.tree.lookup_path(&path), LookupResult::Found(_))
+    if !matches!(token.tree.lookup_path(&path), LookupResult::Found(_)) {
+        return false;
+    }
+
+
+    // Cryptographic validation of the certificate
+    verify_certificate(&certificate, authz_canister_id)
+
 }
 
 // based on https://github.com/dfinity/response-verification/blob/50a32f26fe899a212cec35572e7097bff58b741c/packages/ic-response-verification/src/validation.rs#L6
@@ -164,53 +181,84 @@ fn validate_certificate_time(
     }
 }
 
-// fn verify(
-//     cert: &Certificate,
-//     effective_canister_id: Principal,
-// ) -> bool {
-//     let sig = &cert.signature;
+fn verify_certificate(
+    cert: &Certificate,
+    effective_canister_id: Principal,
+) -> bool {
+    let sig = &cert.signature;
 
-//     let root_hash = cert.tree.digest();
-//     let mut msg = vec![];
-//     // msg.extend_from_slice(IC_STATE_ROOT_DOMAIN_SEPARATOR);
-//     msg.extend_from_slice(&root_hash);
+    let root_hash = cert.tree.digest();
+    let mut msg = vec![];
+    // msg.extend_from_slice(IC_STATE_ROOT_DOMAIN_SEPARATOR);
+    msg.extend_from_slice(&root_hash);
 
-//     let der_key = check_delegation(&cert.delegation, effective_canister_id)?;
-//     let key = extract_der(der_key)?;
+    let der_key = validate_delegation(&cert.delegation, effective_canister_id);
+    let key = extract_der(der_key);
 
-//     ic_verify_bls_signature::verify_bls_signature(sig, &msg, &key)
-//         .map_err(|_| AgentError::CertificateVerificationFailed())
-// }
+    verify_bls_signature(sig, &msg, &key).unwrap();
+    true
+}
 
-// fn check_delegation(
-//     delegation: &Option<Delegation>,
-//     effective_canister_id: Principal,
-// ) -> Vec<u8> {
-//     match delegation {
-//         None => read_root_key(),
-//         Some(delegation) => {
-//             let cert: Certificate = serde_cbor::from_slice(&delegation.certificate).unwrap();
+fn validate_delegation(
+    delegation: &Option<Delegation>,
+    effective_canister_id: Principal,
+) -> Vec<u8> {
+    match delegation {
+        None => ROOT_KEY.with(|root_key| (*root_key.borrow()).clone()),
+        Some(delegation) => {
+            let cert: Certificate = serde_cbor::from_slice(&delegation.certificate).unwrap();
 
-//             verify(&cert, effective_canister_id);
-//             let canister_range_lookup = [
-//                 "subnet".into(),
-//                 delegation.subnet_id.clone().into(),
-//                 "canister_ranges".into(),
-//             ];
-//             let canister_range = lookup_value(&cert, canister_range_lookup);
-//             let ranges: Vec<(Principal, Principal)> =
-//                 serde_cbor::from_slice(canister_range).iunwrap();
-//             if !principal_is_within_ranges(&effective_canister_id, &ranges[..]) {
-//                 // the certificate is not authorized to answer calls for this canister
-//                 trap("Delegation invalid");
-//             }
+            verify_certificate(&cert, effective_canister_id);
+            let canister_range_path = [
+                "subnet".into(),
+                delegation.subnet_id.clone().into(),
+                "canister_ranges".into(),
+            ];
+            let LookupResult::Found(canister_range) = cert.tree.lookup_path(&canister_range_path) else {
+                trap("Delegation invalid");
+            };
+            let ranges: Vec<(Principal, Principal)> =
+                serde_cbor::from_slice(canister_range).unwrap();
+            if !principal_is_within_ranges(&effective_canister_id, &ranges[..]) {
+                // the certificate is not authorized to answer calls for this canister
+                trap("The certificate is not authorized to answer calls for this canister");
+            }
 
-//             let public_key_path = [
-//                 "subnet".into(),
-//                 delegation.subnet_id.clone().into(),
-//                 "public_key".into(),
-//             ];
-//             lookup_value(&cert, public_key_path).map(|pk| pk.to_vec())
-//         }
-//     }
-// }
+            let public_key_path = [
+                "subnet".into(),
+                delegation.subnet_id.clone().into(),
+                "public_key".into(),
+            ];
+            let LookupResult::Found(pk) = cert.tree.lookup_path(&public_key_path) else {
+                trap("Delegation invalid");
+            };
+            pk.to_vec()
+        }
+    }
+}
+
+// Taken from https://github.com/dfinity/agent-rs/blob/60f7a0db21688ca423dee0bb150e142a03e925c6/ic-agent/src/agent/response_authentication.rs#L9
+fn extract_der(buf: Vec<u8>) -> Vec<u8> {
+    let expected_length = DER_PREFIX.len() + KEY_LENGTH;
+    if buf.len() != expected_length {
+       trap(&format!("Invalid key length: {}", buf.len()));
+    }
+
+    let prefix = &buf[0..DER_PREFIX.len()];
+    if prefix[..] != DER_PREFIX[..] {
+        trap("Invalid key prefix");
+    }
+
+    let key = &buf[DER_PREFIX.len()..];
+    key.to_vec()
+}
+
+// Checks if a principal is contained within a list of principal ranges
+// A range is a tuple: (low: Principal, high: Principal), as described here: https://docs.dfinity.systems/spec/public/#state-tree-subnet
+// Taken from https://github.com/dfinity/agent-rs/blob/60f7a0db21688ca423dee0bb150e142a03e925c6/ic-agent/src/agent/mod.rs#L784
+fn principal_is_within_ranges(principal: &Principal, ranges: &[(Principal, Principal)]) -> bool {
+    ranges
+        .iter()
+        .any(|r| principal >= &r.0 && principal <= &r.1)
+}
+
