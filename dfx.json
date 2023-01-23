@@ -9,20 +9,6 @@
       "candid": "src/resource_canister/resource_canister.did",
       "package": "resource_canister",
       "type": "rust"
-    },
-    "dapp_frontend": {
-      "dependencies": [
-        "authz_canister",
-        "resource_canister"
-      ],
-      "frontend": {
-        "entrypoint": "src/dapp_frontend/src/index.html"
-      },
-      "source": [
-        "src/dapp_frontend/assets",
-        "dist/dapp_frontend/"
-      ],
-      "type": "assets"
     }
   },
   "defaults": {
