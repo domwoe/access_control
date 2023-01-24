@@ -1,5 +1,8 @@
 # Access Control on the Internet Computer
 
+![heimdall](./assets/icy_heimdall.png)
+
+
 **Note:** This is a demonstration project and hasn't been audited. Please use it for inspiration only.
 
 ## Motivation
@@ -51,7 +54,21 @@ Note that we have to provide a principal as an init argument. This allows to reg
 Furthermore, we note that each endpoint has an optional argument to provide the authorization token, and that there's an additional endpoint called `get_composite`. This is a composite query that allows performing an inter-canister query call to the `verify_permissions` endpoint.
 
 
-## Demo flow
+### Patterns
+
+#### Token-based access control
+
+![Token-based access control](./assets/access_control_token.svg)
+
+#### Validation endpoint
+
+![Validation endpoint](./assets/access_control_intercanister.svg)
+
+## Comparison
+
+TODO
+
+## Demo
 
 ### Local demo
 
@@ -65,10 +82,21 @@ You can run the demo flow with the following command:
 
 ### Live deployment
 
+I've deployed the canisters to the IC on a single subnet. You can interact with them.
+
 ```
 Resource canister: 62hqk-naaaa-aaaap-qa5oa-cai
 Authorization canister: 65gw6-ayaaa-aaaap-qa5oq-cai
 ```
 
-You can have a look into it or run `demo_ic.sh`.
+Some example calls (or a complete flow) can be found in [`demo_ic.sh`](/demo_ic.sh).
+
+
+## What's next?
+
+If you want to work on production-ready libraries or a configurable authorization canister, then get in contact with me or apply for a developer grant at [https://dfinity.org/grants](https://dfinity.org/grants).
+
+
+
+
 
