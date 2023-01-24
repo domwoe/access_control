@@ -58,11 +58,11 @@ Furthermore, we note that each endpoint has an optional argument to provide the 
 
 #### Token-based access control
 
-![Token-based access control](./assets/access_control_token_white.svg)
+![Token-based access control](./assets/access_control_token.png)
 
 #### Validation endpoint
 
-![Validation endpoint](./assets/access_control_intercanister_white.svg)
+![Validation endpoint](./assets/access_control_intercanister.png)
 
 ## Comparison
 
