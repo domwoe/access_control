@@ -1,6 +1,6 @@
 service : (principal, opt blob) -> {
-    "get": (opt blob)      -> (nat) query;
-    "get_composite": (opt blob) -> (nat) query;
-    "set": (nat, opt blob) -> ();
-    "inc": (opt blob)      -> ();
+    "get": (opt blob)      -> (nat, nat) query;
+    "get_composite": (opt blob) -> (nat, nat) query;
+    "set": (nat, opt blob) -> (nat);
+    "inc": (opt blob)      -> (nat);
 }

@@ -29,7 +29,7 @@ type target = text;
 service : {
     "update_permissions": (principal, target, bool) -> (text); // update permissions of a specific user and target (by its function name)
     "read_permissions_certified": ()              -> (opt token) query; // fetch permissions as token
-    "verify_permissions": (principal, target)       -> (bool) query; // verify permissions
+    "verify_permissions": (principal, target)       -> (bool, nat) query; // verify permissions
 }
 ```
 
@@ -44,11 +44,14 @@ The resource canister is the [counter example canister](https://github.com/dfini
 ```
 type token = blob;
 service : (principal) -> {
-    "get": (opt token)      -> (nat) query;
-    "get_composite": (opt blob) -> (nat) query;
-    "set": (nat, opt token) -> ();
-    "inc": (opt token)      -> ();
+    "get": (opt token)      -> (nat, nat) query;
+    "get_composite": (opt blob) -> (nat, nat) query;
+    "set": (nat, opt token) -> (nat);
+    "inc": (opt token)      -> (nat);
 ```
+
+The second number in the return values of the first two methods and the number in the return values of the last two methods is the number of instructions used for the verification of the permissions.
+
 Note that we have to provide a principal as an init argument. This allows to register the authorization canister. We need the principal of the authorization canister to verify that the tokens have been "signed" by the authorization canister, or to know how to call the `verify_permissions` endpoints.
 
 Furthermore, we note that each endpoint has an optional argument to provide the authorization token, and that there's an additional endpoint called `get_composite`. This is a composite query that allows performing an inter-canister query call to the `verify_permissions` endpoint.
@@ -66,7 +69,46 @@ Furthermore, we note that each endpoint has an optional argument to provide the 
 
 ## Comparison
 
-TODO
+
+|          |           Token          |       Inter-canister Call      |
+|----------|--------------------------|--------------------------------|
+| DevX     |  :thinking:	          |       :grinning:	           |
+| Latency  |  :grinning:	          |       :grinning: (same subnet) |
+| Cost     |  :slightly_smiling_face: |       :goberserk:	           |
+| Security |  :grinning:              |       :grinning:               |
+
+### Developer Experience
+
+The token-based approach adds quite a bit of complexity. As a client, we need to fetch the authorization token and have logic to get a new one if it is expired. Furthermore, there we need to verify the permissions in the certified map, as well as verify the IC certificate. This could be abstracted away in a library though. The token-based approach is also currently out of reach for Motoko developers, since we don't have a library for a certified map, as well as a library for BLS signature verification.
+
+The inter-canister call to the validation endpoint, on the other hand, is very easy to implement in Rust and Motoko.
+
+### Latency & Cost
+
+As long as both canisters are on the same subnet there is no big difference in latency between the two approaches. With the availability of composite queries, it could be even faster to have a composite query than to do the token verification.
+If the canisters were on different subnets, then the token-based approach would provide lower latency.
+
+On the cost side, let's look at the token approach first: 
+Token size: 221 bytes
+Ingress msg byte cost: 1'000 * 221 = 221'000 cycles (we don't need to take the cost for the ingress message itself into account, since it is needed for both approaches)
+Instructions for certificate verification: 463'975'738 ~> 185'590'000 cycles
+--------------
+Total: 185'811'000 cycles
+
+For the inter-canister call approach, we have call and reply, which cost 260'000 cycles each + 3 times the cost for update message execution of 590'000 cycles => 2'290'000 cycles.
+The data transferred is rather small, so we neglect this cost hee.
+
+The instructions used for verification of the permissions by the authorization canister are also quite small with about 50'000 instructions => 20000 cycles
+--------------
+Total: 2'310'000 cycles
+
+=> The token-based approach is approx. 80 times as expensive as the inter-canister call-based approach.
+
+### Security
+
+ There are two points to mention with respect to security:
+ 1) The inter-canister call approach has the advantage that permissions can immediately be revoked (if there's no caching).
+ 2) You need to be aware of the implications of inter-canister calls in general. See the relevant section in the [Security Best Practices](https://internetcomputer.org/docs/current/references/security/rust-canister-development-security-best-practices#inter-canister-calls-and-rollbacks).
 
 ## Demo
 
@@ -90,6 +132,11 @@ Authorization canister: 65gw6-ayaaa-aaaap-qa5oq-cai
 ```
 
 Some example calls (or a complete flow) can be found in [`demo_ic.sh`](/demo_ic.sh).
+
+
+## Final Remarks
+
+The authorization canister does not use stable memory, as such all permissions are lost on upgrade.
 
 
 ## What's next?

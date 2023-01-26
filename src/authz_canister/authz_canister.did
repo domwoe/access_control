@@ -1,5 +1,5 @@
 service : {
     "update_permissions": (principal, text, bool) -> (text);
     "read_permissions_certified": ()              -> (opt blob) query;
-    "verify_permissions": (principal, text)       -> (bool) query;
+    "verify_permissions": (principal, text)       -> (bool, nat) query;
 }

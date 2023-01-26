@@ -43,59 +43,61 @@ thread_local! {
 
 /// Get the value of the counter.
 #[query]
-fn get(token: Option<Vec<u8>>) -> Nat {
-    let is_allowed = match token {
-        Some(token) => verify_token("get", token),
-        None => false,
+fn get(token: Option<Vec<u8>>) -> (Nat, Nat) {
+    let (is_allowed, instructions) = match token {
+        Some(token) => (true, verify_token("get", token)),
+        None => trap("No token provided"),
     };
     if !is_allowed {
         trap(&format!("Caller {} is not allowed to call get", caller()));
     }
-    COUNTER.with(|counter| (*counter.borrow()).clone())
+    (COUNTER.with(|counter| (*counter.borrow()).clone()), instructions)
 }
 
 /// Get the value of the counter
 /// This method is marked as a composite query and as such can call the verify query of the authz canister    
 #[query(composite = true)]
-async fn get_composite(token: Option<Vec<u8>>) -> Nat {
-    let is_allowed = match token {
-        Some(token) => verify_token("get", token),
+async fn get_composite(token: Option<Vec<u8>>) -> (Nat, Nat) {
+    let (is_allowed, instructions) = match token {
+        Some(token) => (true, verify_token("get", token)),
         None => verify_remote_permissions("get").await,
     };
     if !is_allowed {
         trap(&format!("Caller {} is not allowed to call get", caller()));
     }
-    COUNTER.with(|counter| (*counter.borrow()).clone())
+    (COUNTER.with(|counter| (*counter.borrow()).clone()), instructions)
 }
 
 /// Set the value of the counter.
 #[update]
-async fn set(n: Nat, token: Option<Vec<u8>>) {
-    let is_allowed = match token {
-        Some(token) => verify_token("set", token),
+async fn set(n: Nat, token: Option<Vec<u8>>) -> Nat {
+    let (is_allowed, instructions) = match token {
+        Some(token) => (true, verify_token("set", token)),
         None => verify_remote_permissions("set").await,
     };
     if !is_allowed {
         trap(&format!("Caller {} is not allowed to call set", caller()));
     }
     COUNTER.with(|count| *count.borrow_mut() = n);
+    instructions
 }
 
 /// Increment the value of the counter.
 #[update]
-async fn inc(token: Option<Vec<u8>>) {
-    let is_allowed = match token {
-        Some(token) => verify_token("inc", token),
+async fn inc(token: Option<Vec<u8>>) -> Nat {
+    let (is_allowed, instructions) = match token {
+        Some(token) => (true, verify_token("inc", token)),
         None => verify_remote_permissions("inc").await,
     };
     if !is_allowed {
         trap(&format!("Caller {} is not allowed to call inc", caller()));
     }
     COUNTER.with(|counter| *counter.borrow_mut() += 1);
+    instructions
 }
 
 /// Verify by permissions by calling the authz canister
-async fn verify_remote_permissions(action: &str) -> bool {
+async fn verify_remote_permissions(action: &str) -> (bool, Nat) {
     let authz_canister_id =
         AUTHZ_CANISTER_ID.with(|authz_canister_id| (*authz_canister_id.borrow()));
 
@@ -106,13 +108,16 @@ async fn verify_remote_permissions(action: &str) -> bool {
     )
     .await
     {
-        Ok((is_allowed,)) => is_allowed,
-        Err(_) => false,
+        Ok((is_allowed,instructions)) => (is_allowed, instructions),
+        Err(_) => (false, Nat::from(0)),
     }
 }
 
 /// Verify the token
-fn verify_token(action: &str, mut token: Vec<u8>) -> bool {
+/// Will trap if the token is invalid
+/// Returns the numbero of instructions used to verify the token
+fn verify_token(action: &str, mut token: Vec<u8>) -> Nat {
+    let n0_instructions =  ic_cdk::api::instruction_counter();
     let token: Token = from_mut_slice(&mut token[..]).unwrap();
     let certificate: Certificate = serde_cbor::from_slice(&token.certificate[..]).unwrap();
 
@@ -154,7 +159,12 @@ fn verify_token(action: &str, mut token: Vec<u8>) -> bool {
 
 
     // Cryptographic validation of the certificate
-    verify_certificate(&certificate, authz_canister_id)
+    if !verify_certificate(&certificate, authz_canister_id) {
+        trap("Certificate is not valid")
+    }
+    let n1_instructions =  ic_cdk::api::instruction_counter();
+
+    Nat::from(n1_instructions - n0_instructions)
 
 }
 

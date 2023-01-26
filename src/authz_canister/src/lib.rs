@@ -1,5 +1,5 @@
 
-use candid::Principal;
+use candid::{types::number::Nat, Principal};
 use ic_cdk::api::{data_certificate, set_certified_data, trap};
 use ic_cdk_macros::{query, update};
 use ic_certified_map::{AsHashTree, HashTree, RbTree};
@@ -20,9 +20,9 @@ thread_local! {
 
 
 #[query]
-fn verify_permissions(user: Principal, action: String) -> bool {
+fn verify_permissions(user: Principal, action: String) -> (bool, Nat) {
  
-    PERMISSIONS.with(|permissions| {
+    let permissions = PERMISSIONS.with(|permissions| {
         let permissions = permissions.borrow();
         let user_permissions  = permissions.get(user.as_ref());
         if let Some(user_permissions) = user_permissions {
@@ -30,7 +30,10 @@ fn verify_permissions(user: Principal, action: String) -> bool {
         } else {
             false
         }
-    })
+    });
+    let instructions = ic_cdk::api::instruction_counter();
+    (permissions, Nat::from(instructions))
+
 }
 
 

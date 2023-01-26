@@ -19,6 +19,9 @@ dfx canister call authz_canister update_permissions "(principal \"$MY_ID\", \"in
 echo 'Requesting token..'
 TOKEN=$(dfx canister call authz_canister read_permissions_certified | grep -o '".*"')
 
+SIZE=$(echo $TOKEN | wc -c)
+echo "Token size in bytes: $SIZE"
+
 echo 'Get counter value with token...'
 time dfx canister call resource_canister get "(opt blob $TOKEN,)"
 
