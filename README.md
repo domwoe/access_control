@@ -7,7 +7,7 @@
 
 ## Motivation
 
-In microservice architectures, it's common to centralize access control by having a single authorization service that manages all permissions. This simplifies permission management but raises the question of how resource services learn about the permissions. There are two main patterns:
+In microservice architectures, it's common to centralize access control by having a single authorization service that manages all permissions. This simplifies permission management but raises the question of how resource services learn about permissions. There are two main patterns:
 
 1) Tokens: A client requests an authorization token from the authorization service and invokes it at the resource service. Here, the resource service does not need to directly communicate with the authorization service.
 2) Validation endpoint: The authorization server exposes a validation endpoint that the resource service can use to validate permissions.
@@ -52,9 +52,9 @@ service : (principal) -> {
 
 The second number in the return values of the first two methods and the number in the return values of the last two methods is the number of instructions used for the verification of the permissions.
 
-Note that we have to provide a principal as an init argument. This allows to register the authorization canister. We need the principal of the authorization canister to verify that the tokens have been "signed" by the authorization canister, or to know how to call the `verify_permissions` endpoints.
+Note that we have to provide a principal as an init argument. This allows registering the authorization canister. We need the principal of the authorization canister to verify that the tokens have been "signed" by the authorization canister, or to know how to call the `verify_permissions` endpoints.
 
-Furthermore, we note that each endpoint has an optional argument to provide the authorization token, and that there's an additional endpoint called `get_composite`. This is a composite query that allows performing an inter-canister query call to the `verify_permissions` endpoint.
+Furthermore, we note that each endpoint has an optional argument to provide the authorization token and that there's an additional endpoint called `get_composite`. This is a composite query that allows performing an inter-canister query call to the `verify_permissions` endpoint.
 
 
 ### Patterns
@@ -106,11 +106,21 @@ Total: 2'310'000 cycles
 
 ### Security
 
- There are two points to mention with respect to security:
+ There are two points to mention concerning security:
  1) The inter-canister call approach has the advantage that permissions can immediately be revoked (if there's no caching).
  2) You need to be aware of the implications of inter-canister calls in general. See the relevant section in the [Security Best Practices](https://internetcomputer.org/docs/current/references/security/rust-canister-development-security-best-practices#inter-canister-calls-and-rollbacks).
 
 ## Demo
+
+### Prerequisites
+
+You need to have the command line tool `dfx` installed:
+
+
+```
+sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
+
+```
 
 ### Local demo
 
@@ -124,12 +134,13 @@ You can run the demo flow with the following command:
 
 ### Live deployment
 
-I've deployed the canisters to the IC on a single subnet. You can interact with them.
+I've deployed the canisters to the IC on a single subnet. You can interact with the deployed canisters:
 
 ```
 Resource canister: 62hqk-naaaa-aaaap-qa5oa-cai
 Authorization canister: 65gw6-ayaaa-aaaap-qa5oq-cai
 ```
+or deploy your own instances.
 
 Some example calls (or a complete flow) can be found in [`demo_ic.sh`](/demo_ic.sh).
 
@@ -141,7 +152,11 @@ The authorization canister does not use stable memory, as such all permissions a
 
 ## What's next?
 
-If you want to work on production-ready libraries or a configurable authorization canister, then get in contact with me or apply for a developer grant at [https://dfinity.org/grants](https://dfinity.org/grants).
+If you want to work on production-ready libraries or a configurable authorization canister, then get in contact with me or apply for a [DFINITY Developer Grant](https://dfinity.org/grants).
+
+## You don't know about the Internet Computer?
+
+Check out [https://internetcomputer.org](https://internetcomputer.org).
 
 
 
