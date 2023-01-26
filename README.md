@@ -74,7 +74,7 @@ Furthermore, we note that each endpoint has an optional argument to provide the 
 |----------|--------------------------|--------------------------------|
 | DevX     |  :thinking:	          |       :grinning:	           |
 | Latency  |  :grinning:	          |       :grinning: (same subnet) |
-| Cost     |  :slightly_smiling_face: |       :goberserk:	           |
+| Cost     |  :goberserk:             |    :slightly_smiling_face:   |
 | Security |  :grinning:              |       :grinning:               |
 
 ### Developer Experience
@@ -92,14 +92,14 @@ On the cost side, let's look at the token approach first:
 Token size: 221 bytes
 Ingress msg byte cost: 1'000 * 221 = 221'000 cycles (we don't need to take the cost for the ingress message itself into account, since it is needed for both approaches)
 Instructions for certificate verification: 463'975'738 ~> 185'590'000 cycles
---------------
+
 Total: 185'811'000 cycles
 
 For the inter-canister call approach, we have call and reply, which cost 260'000 cycles each + 3 times the cost for update message execution of 590'000 cycles => 2'290'000 cycles.
 The data transferred is rather small, so we neglect this cost hee.
 
 The instructions used for verification of the permissions by the authorization canister are also quite small with about 50'000 instructions => 20000 cycles
---------------
+
 Total: 2'310'000 cycles
 
 => The token-based approach is approx. 80 times as expensive as the inter-canister call-based approach.
