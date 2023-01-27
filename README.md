@@ -1,11 +1,13 @@
 # Access Control on the Internet Computer
 
-![heimdall](./assets/icy_heimdall.png)
+![heimdall](./assets/heimdall_access_control.png)
 
 
 **Note:** This is a demonstration project and hasn't been audited. Please use it for inspiration only.
 
 ## Motivation & Goal
+
+The Internet Computer has a built-in mechanism for access control based on cryptographic signatures. The canister can be sure that its method was called by a specific principal, which is available as `ic_cdk::api::caller()`. However, the canister needs also to know which permissions this principal has.
 
 In microservice architectures, it's common to centralize access control by having a single authorization service that manages all permissions. This simplifies permission management but raises the question of how resource services learn about permissions. There are two main patterns:
 
