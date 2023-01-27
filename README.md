@@ -11,8 +11,8 @@ The Internet Computer has a built-in mechanism for access control based on crypt
 
 In microservice architectures, it's common to centralize access control by having a single authorization service that manages all permissions. This simplifies permission management but raises the question of how resource services learn about permissions. There are two main patterns:
 
-1) Tokens: A client requests an authorization token from the authorization service and invokes it at the resource service. Here, the resource service does not need to directly communicate with the authorization service.
-2) Validation endpoint (Inter-canister call): The authorization server exposes a validation endpoint that the resource service can use to validate permissions.
+1) **Tokens**: A client requests an authorization token from the authorization service and invokes it at the resource service. Here, the resource service does not need to directly communicate with the authorization service.
+2) **Validation endpoint (Inter-canister call)**: The authorization server exposes a validation endpoint that the resource service can use to validate permissions.
 
 On the Internet Computer, we can use the same patterns. This demonstration project showcases both patterns and provides a [comparison](#comparison).
 
@@ -104,6 +104,8 @@ The instructions used for verification of the permissions by the authorization c
 Total: 2'310'000 cycles
 
 => The token-based approach is approx. 80 times as expensive as the inter-canister call-based approach.
+
+Note: You can find the detailed list of all costs on the IC [here](https://internetcomputer.org/docs/current/developer-docs/deploy/computation-and-storage-costs). I've assumed a normal application subnet with 13 nodes.
 
 ### Security
 
