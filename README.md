@@ -12,9 +12,9 @@ The Internet Computer has a built-in mechanism for access control based on crypt
 In microservice architectures, it's common to centralize access control by having a single authorization service that manages all permissions. This simplifies permission management but raises the question of how resource services learn about permissions. There are two main patterns:
 
 1) Tokens: A client requests an authorization token from the authorization service and invokes it at the resource service. Here, the resource service does not need to directly communicate with the authorization service.
-2) Validation endpoint: The authorization server exposes a validation endpoint that the resource service can use to validate permissions.
+2) Validation endpoint (Inter-canister call): The authorization server exposes a validation endpoint that the resource service can use to validate permissions.
 
-On the Internet Computer, we can use the same patterns. This demonstrator showcases both patterns and provides a [comparison](#comparison).
+On the Internet Computer, we can use the same patterns. This demonstration project showcases both patterns and provides a [comparison](#comparison).
 
 ## Architecture
 
@@ -64,7 +64,7 @@ Furthermore, we note that each endpoint has an optional argument to provide the 
 
 ![Token-based access control](./assets/access_control_token.png)
 
-#### Validation endpoint
+#### Validation endpoint (Inter-canister call)
 
 ![Validation endpoint](./assets/access_control_intercanister.png)
 
@@ -90,13 +90,13 @@ As long as both canisters are on the same subnet there is no big difference in l
 If the canisters were on different subnets, then the token-based approach would provide lower latency.
 
 On the cost side, let's look at the token approach first: 
-Token size: 221 bytes
-Ingress msg byte cost: 1'000 * 221 = 221'000 cycles (we don't need to take the cost for the ingress message itself into account, since it is needed for both approaches)
-Instructions for certificate verification: 463'975'738 ~> 185'590'000 cycles
+- Token size: 221 bytes
+- Ingress msg byte cost: 1'000 * 221 = 221'000 cycles (we don't need to take the cost for the ingress message itself into account, since it is needed for both approaches)
+- Instructions for certificate verification: 463'975'738 ~> 185'590'000 cycles
 
 Total: 185'811'000 cycles
 
-For the inter-canister call approach, we have call and reply, which cost 260'000 cycles each + 3 times the cost for update message execution of 590'000 cycles => 2'290'000 cycles.
+For the inter-canister call approach, we have a call and a reply, which cost 260'000 cycles each + 3 times the cost for update message execution of 590'000 cycles => 2'290'000 cycles.
 The data transferred is rather small, so we neglect this cost hee.
 
 The instructions used for verification of the permissions by the authorization canister are also quite small with about 50'000 instructions => 20000 cycles
